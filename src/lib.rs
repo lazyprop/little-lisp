@@ -11,28 +11,18 @@ enum LispExpr {
 fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, String> {
     match expr {
         LispExpr::Symbol(s) => match env.data.get(s) {
-            Some(x) => Ok(x.clone()),
+            Some(e) => Ok(e.clone()),
             None => Err(String::from("Symbol not found in environment")),
         },
         LispExpr::Integer(_) => Ok(expr.clone()),
         LispExpr::List(list) => {
-            let first = match eval(&list[0], env) {
-                Ok(val) => val,
-                Err(e) => return Err(e),
-            };
-            match first {
-                LispExpr::Func(f) => {
-                    let mut args = Vec::<LispExpr>::new();
-                    for e in list[1..].iter() {
-                        match eval(e, env) {
-                            Ok(val) => args.push(val),
-                            Err(x) => return Err(x),
-                        }
-                    }
-
-                    Ok(f(args))
-                },
-                _ => Err(String::from("First element not a function")),
+            if let LispExpr::Func(f) = eval(&list[0], env)? {
+                let args = list[1..].iter()
+                    .map(|a| eval(a, env))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(f(args))
+            } else  {
+                Err("First element not a function".to_string())
             }
         },
         LispExpr::Func(_) => Ok(expr.clone()),
@@ -110,44 +100,23 @@ mod tests {
     use super::*;
     use LispExpr::*;
 
-    fn add(args: Vec<LispExpr>) -> LispExpr {
-        let mut ans: i64 = 0;
-        for a in args {
-            match a {
-                Integer(n) => ans += n,
-                _ => ()
-            }
-        }
-        Integer(ans)
-    }
-
     #[test]
     fn eval_test() {
         let mut env = LispEnv::default();
-        //env.insert(String::from("+"), Func(add));
 
         let expr = List(vec![Symbol(String::from("+")),
                     List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        match eval(&expr, &mut env) {
-            Ok(val) => assert_eq!(val, Integer(12)),
-            Err(_) => assert!(false),
-        }
+        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(12));
 
         let expr = List(vec![Symbol(String::from("+")),
                     List(vec![Symbol(String::from("-")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        match eval(&expr, &mut env) {
-            Ok(val) => assert_eq!(val, Integer(-4)),
-            Err(_) => assert!(false),
-        }
+        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(-4));
 
         let expr = List(vec![Symbol(String::from("*")),
                     List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        match eval(&expr, &mut env) {
-            Ok(val) => assert_eq!(val, Integer(32)),
-            Err(_) => assert!(false),
-        }
+        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(32));
     }
 }
