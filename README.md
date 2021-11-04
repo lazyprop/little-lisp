@@ -9,8 +9,8 @@ much easier to do in Rust with all the types.
 ## TODO
 - [ ] REFACTOR
   - [ ] Think about why all the `clones` and think of something better.
-  - [ ] Get rid of all the unnecessary `match`es.
-  - [ ] Get rid of all the unnecessary copies.
+  - [x] Get rid of all the unnecessary `match`es.
+  - [x] Get rid of all the unnecessary copies.
   - [ ] Be careful where to borrow and where to take ownership.
   - [ ] Make everything functional.
 - [ ] Better errror handling.
