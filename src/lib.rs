@@ -5,14 +5,21 @@ enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
-    Func(fn(Vec<LispExpr>) -> LispExpr),
+    Func(fn(Vec<LispExpr>) -> LispExpr), // TODO should Func return Result?
 }
 
-fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, String> {
+#[derive(Debug)]
+enum LispErr {
+    ArityMismatch,
+    NameError,
+    NotCallable,
+}
+
+fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, LispErr> {
     match expr {
         LispExpr::Symbol(s) => match env.data.get(s) {
             Some(e) => Ok(e.clone()),
-            None => Err(String::from("Symbol not found in environment")),
+            None => Err(LispErr::NameError),
         },
         LispExpr::Integer(_) => Ok(expr.clone()),
         LispExpr::List(list) => {
@@ -22,7 +29,7 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, String> {
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(f(args))
             } else  {
-                Err("First element not a function".to_string())
+                Err(LispErr::NotCallable)
             }
         },
         LispExpr::Func(_) => Ok(expr.clone()),
