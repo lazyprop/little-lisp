@@ -5,7 +5,16 @@ enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
-    Func(fn(Vec<LispExpr>) -> LispExpr), // TODO should Func return Result?
+    Func(fn(Vec<LispExpr>) -> Result<LispExpr, LispErr>),
+}
+
+impl LispExpr {
+    fn parse_int(&self) -> Result<i64, LispErr> {
+        match self {
+            LispExpr::Integer(i) => Ok(i.clone()),
+            _ => Err(LispErr::TypeError),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -13,6 +22,7 @@ enum LispErr {
     ArityMismatch,
     NameError,
     NotCallable,
+    TypeError,
 }
 
 fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, LispErr> {
@@ -27,7 +37,7 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, LispErr> {
                 let args = list[1..].iter()
                     .map(|a| eval(a, env))
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(f(args))
+                f(args)
             } else  {
                 Err(LispErr::NotCallable)
             }
@@ -35,6 +45,7 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, LispErr> {
         LispExpr::Func(_) => Ok(expr.clone()),
     }
 }
+
 
 struct LispEnv {
     data: HashMap<String, LispExpr>,
@@ -51,45 +62,45 @@ impl LispEnv {
         env.insert(
             String::from("+"),
             LispExpr::Func(
-                |args: Vec<LispExpr>| -> LispExpr {
-                    let mut ans = 0;
-                    for a in args {
-                        match a {
-                            LispExpr::Integer(n) => ans += n,
-                            _ => ()
-                        }
-                    }
-                    LispExpr::Integer(ans)
+                |args: Vec<LispExpr>| -> Result<LispExpr, LispErr> {
+                    // TODO too many copies?
+                    // TODO find a better way to do this
+                    let ans = args.iter()
+                        .map(|a| a.parse_int() )
+                        .collect::<Result<Vec<_>, _>>()?
+                        .iter()
+                        .cloned()
+                        .sum();
+                    Ok(LispExpr::Integer(ans))
                 })
             );
 
         env.insert(
             String::from("-"),
             LispExpr::Func(
-                |args: Vec<LispExpr>| -> LispExpr {
-                    let mut ans = 0;
-                    for a in args {
-                        match a {
-                            LispExpr::Integer(n) => ans -= n,
-                            _ => ()
-                        }
-                    }
-                    LispExpr::Integer(ans)
+                |args: Vec<LispExpr>| -> Result<LispExpr, LispErr> {
+                    let first = args[0].parse_int()?;
+                    let ans: i64 = args.iter()
+                        .map(|a| a.parse_int() )
+                        .collect::<Result<Vec<_>, _>>()?
+                        .iter()
+                        .cloned()
+                        .sum();
+                    Ok(LispExpr::Integer(2i64*first - ans))
                 })
             );
 
         env.insert(
             String::from("*"),
             LispExpr::Func(
-                |args: Vec<LispExpr>| -> LispExpr {
-                    let mut ans = 1;
-                    for a in args {
-                        match a {
-                            LispExpr::Integer(n) => ans *= n,
-                            _ => ()
-                        }
-                    }
-                    LispExpr::Integer(ans)
+                |args: Vec<LispExpr>| -> Result<LispExpr, LispErr> {
+                    let ans: i64 = args.iter()
+                        .map(|a| a.parse_int() )
+                        .collect::<Result<Vec<_>, _>>()?
+                        .iter()
+                        .cloned()
+                        .product();
+                    Ok(LispExpr::Integer(ans))
                 })
             );
 
@@ -119,7 +130,7 @@ mod tests {
         let expr = List(vec![Symbol(String::from("+")),
                     List(vec![Symbol(String::from("-")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(-4));
+        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(2));
 
         let expr = List(vec![Symbol(String::from("*")),
                     List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
