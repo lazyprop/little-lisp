@@ -57,6 +57,7 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> ReturnType {
         LispExpr::Integer(_) => Ok(expr.clone()),
         LispExpr::List(list) => {
             let f = eval(&list[0], env)?.parse_fn()?;
+            // TODO does slicing here create a copy?
             let args = list[1..].iter()
                 .map(|a| eval(a, env))
                 .collect::<Result<Vec<_>, _>>()?;

@@ -25,6 +25,9 @@ much easier to do in Rust with all the types.
         function there but not while composing functions. This causes type
         mismatch.
 - [ ] More tests.
-- [ ] Write a parser.
+- [ ] PARSER
+  - [ ] Basic string -> token tree parser.
+  - [ ] Parse tokens into `LispExpr` tree (ast).
+  - [ ] Parser errors
 - [ ] Write a REPL.
 - [ ] Add more things to default environment.
