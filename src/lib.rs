@@ -1,17 +1,35 @@
 use std::collections::HashMap;
 
+// all lisp functions return this type
+type ReturnType = Result<LispExpr, LispErr>;
+
 #[derive(Clone, Debug, PartialEq)]
 enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
-    Func(fn(Vec<LispExpr>) -> Result<LispExpr, LispErr>),
+    Func(fn(Vec<LispExpr>) -> ReturnType),
 }
 
+
 impl LispExpr {
+    fn parse_symbol(&self) -> Result<String, LispErr> {
+        match self {
+            LispExpr::String(s) => Ok(s.clone()),
+            _ => Err(LispErr::TypeError),
+        }
+    }
+
     fn parse_int(&self) -> Result<i64, LispErr> {
         match self {
             LispExpr::Integer(i) => Ok(i.clone()),
+            _ => Err(LispErr::TypeError),
+        }
+    }
+
+    fn parse_fn(&self) -> Result<fn(Vec<LispExpr>) -> ReturnType, LispErr> {
+        match self {
+            LispExpr::Func(f) => Ok(f.clone()),
             _ => Err(LispErr::TypeError),
         }
     }
@@ -21,11 +39,10 @@ impl LispExpr {
 enum LispErr {
     ArityMismatch,
     NameError,
-    NotCallable,
     TypeError,
 }
 
-fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, LispErr> {
+fn eval(expr: &LispExpr, env: &mut LispEnv) -> ReturnType {
     match expr {
         LispExpr::Symbol(s) => match env.data.get(s) {
             Some(e) => Ok(e.clone()),
@@ -33,14 +50,11 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> Result<LispExpr, LispErr> {
         },
         LispExpr::Integer(_) => Ok(expr.clone()),
         LispExpr::List(list) => {
-            if let LispExpr::Func(f) = eval(&list[0], env)? {
-                let args = list[1..].iter()
-                    .map(|a| eval(a, env))
-                    .collect::<Result<Vec<_>, _>>()?;
-                f(args)
-            } else  {
-                Err(LispErr::NotCallable)
-            }
+            let f = eval(&list[0], env)?.parse_fn()?;
+            let args = list[1..].iter()
+                .map(|a| eval(a, env))
+                .collect::<Result<Vec<_>, _>>()?;
+            f(args)
         },
         LispExpr::Func(_) => Ok(expr.clone()),
     }
@@ -62,7 +76,7 @@ impl LispEnv {
         env.insert(
             String::from("+"),
             LispExpr::Func(
-                |args: Vec<LispExpr>| -> Result<LispExpr, LispErr> {
+                |args: Vec<LispExpr>| -> ReturnType {
                     // TODO too many copies?
                     // TODO find a better way to do this
                     let ans = args.iter()
@@ -78,7 +92,7 @@ impl LispEnv {
         env.insert(
             String::from("-"),
             LispExpr::Func(
-                |args: Vec<LispExpr>| -> Result<LispExpr, LispErr> {
+                |args: Vec<LispExpr>| -> ReturnType {
                     let first = args[0].parse_int()?;
                     let ans: i64 = args.iter()
                         .map(|a| a.parse_int() )
@@ -93,7 +107,7 @@ impl LispEnv {
         env.insert(
             String::from("*"),
             LispExpr::Func(
-                |args: Vec<LispExpr>| -> Result<LispExpr, LispErr> {
+                |args: Vec<LispExpr>| -> ReturnType {
                     let ans: i64 = args.iter()
                         .map(|a| a.parse_int() )
                         .collect::<Result<Vec<_>, _>>()?

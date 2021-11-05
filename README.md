@@ -14,8 +14,12 @@ much easier to do in Rust with all the types.
   - [ ] Be careful where to borrow and where to take ownership.
   - [x] Make everything functional.
   - [ ] Find a better way to do built-in `+` and `*` functions
-  - [ ] Write more `LispExpr.parse()` functions.
-- [x] Better errror handling.
+  - [x] Write more `LispExpr.parse()` functions.
+  - [ ] Think of a better name for `LispExpr.parse_type()`. It's not actually a
+    parser.
+- [x] Better error handling.
+- [ ] More general function definition. Fixed arity functions. Typechecking
+  arguments.
 - [ ] More tests.
 - [ ] Write a parser.
 - [ ] Write a REPL.
