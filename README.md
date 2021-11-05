@@ -14,6 +14,7 @@ much easier to do in Rust with all the types.
   - [ ] Be careful where to borrow and where to take ownership.
   - [x] Make everything functional.
   - [ ] Find a better way to do built-in `+` and `*` functions
+  - [ ] Write more `LispExpr.parse()` functions.
 - [x] Better errror handling.
 - [ ] More tests.
 - [ ] Write a parser.
