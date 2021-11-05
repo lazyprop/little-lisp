@@ -60,6 +60,11 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> ReturnType {
             let args = list[1..].iter()
                 .map(|a| eval(a, env))
                 .collect::<Result<Vec<_>, _>>()?;
+
+            if !f.inf_args && f.arity != args.len() {
+                return Err(LispErr::ArityMismatch)
+            }
+
             // recursively evaluate until the return value is not an atom
             eval(&(f.func)(args)?, env) // TODO who owns the value here?
         },
@@ -207,5 +212,15 @@ mod tests {
 
         let expr = List(vec![Symbol("bad-func".to_string())]);
         assert!(eval(&expr, &mut env).is_err());
+
+        let expr = List(vec![Symbol("square".to_string()),
+                             Integer(3),
+                             Integer(4)]);
+
+        // TODO write better tests
+        assert!(match eval(&expr, &mut env) {
+                    Err(LispErr::ArityMismatch) => true,
+                    _ => false,
+        });
     }
 }
