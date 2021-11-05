@@ -15,11 +15,10 @@ enum LispExpr {
 impl LispExpr {
     fn parse_symbol(&self) -> Result<String, LispErr> {
         match self {
-            LispExpr::String(s) => Ok(s.clone()),
+            LispExpr::Symbol(s) => Ok(s.clone()),
             _ => Err(LispErr::TypeError),
         }
     }
-
     fn parse_int(&self) -> Result<i64, LispErr> {
         match self {
             LispExpr::Integer(i) => Ok(i.clone()),
