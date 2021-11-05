@@ -20,6 +20,10 @@ much easier to do in Rust with all the types.
 - [x] Better error handling.
 - [ ] More general function definition. Fixed arity functions. Typechecking
   arguments.
+  - [ ] Figure out what type should the function be and return.
+        Is it a `LispExpr`? Is it a `LispFunc`. In `+` etc. we're evaluating the
+        function there but not while composing functions. This causes type
+        mismatch.
 - [ ] More tests.
 - [ ] Write a parser.
 - [ ] Write a REPL.

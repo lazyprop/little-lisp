@@ -1,14 +1,21 @@
 use std::collections::HashMap;
 
-// all lisp functions return this type
-type ReturnType = Result<LispExpr, LispErr>;
+type ArgsType = Vec<LispExpr>; // all lisp function take a list of arguments
+type ReturnType = Result<LispExpr, LispErr>; // all lisp functions return this type
+
+#[derive(Clone, Debug, PartialEq)]
+struct LispFunc {
+    func: fn(ArgsType) -> ReturnType,
+    arity: usize, // number of arguments
+    inf_args: bool,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
-    Func(fn(Vec<LispExpr>) -> ReturnType),
+    Func(LispFunc)
 }
 
 
@@ -26,7 +33,7 @@ impl LispExpr {
         }
     }
 
-    fn parse_fn(&self) -> Result<fn(Vec<LispExpr>) -> ReturnType, LispErr> {
+    fn parse_fn(&self) -> Result<LispFunc, LispErr> {
         match self {
             LispExpr::Func(f) => Ok(f.clone()),
             _ => Err(LispErr::TypeError),
@@ -53,7 +60,8 @@ fn eval(expr: &LispExpr, env: &mut LispEnv) -> ReturnType {
             let args = list[1..].iter()
                 .map(|a| eval(a, env))
                 .collect::<Result<Vec<_>, _>>()?;
-            f(args)
+            // recursively evaluate until the return value is not an atom
+            eval(&(f.func)(args)?, env) // TODO who owns the value here?
         },
         LispExpr::Func(_) => Ok(expr.clone()),
     }
@@ -72,10 +80,13 @@ impl LispEnv {
     fn default() -> LispEnv {
         let mut env = LispEnv::new();
 
+        use LispExpr::*;
+
+        // addition
         env.insert(
-            String::from("+"),
-            LispExpr::Func(
-                |args: Vec<LispExpr>| -> ReturnType {
+            "+".to_string(),
+            Func(LispFunc {
+                func: |args: ArgsType| -> ReturnType {
                     // TODO too many copies?
                     // TODO find a better way to do this
                     let ans = args.iter()
@@ -84,39 +95,75 @@ impl LispEnv {
                         .iter()
                         .cloned()
                         .sum();
-                    Ok(LispExpr::Integer(ans))
-                })
-            );
+                    Ok(Integer(ans))
+                },
+                inf_args: true,
+                arity: 0,
+            })
+        );
 
+        // subtraction
         env.insert(
-            String::from("-"),
-            LispExpr::Func(
-                |args: Vec<LispExpr>| -> ReturnType {
+            "-".to_string(),
+            Func(LispFunc {
+                func: |args: ArgsType| -> ReturnType {
                     let first = args[0].parse_int()?;
-                    let ans: i64 = args.iter()
+                    let ans: i64 = args[1..].iter()
                         .map(|a| a.parse_int() )
                         .collect::<Result<Vec<_>, _>>()?
                         .iter()
                         .cloned()
                         .sum();
-                    Ok(LispExpr::Integer(2i64*first - ans))
-                })
-            );
+                    Ok(Integer(first - ans))
+                },
+                inf_args: true,
+                arity: 0,
+            })
+        );
 
+        // multiplication
         env.insert(
-            String::from("*"),
-            LispExpr::Func(
-                |args: Vec<LispExpr>| -> ReturnType {
-                    let ans: i64 = args.iter()
+            "*".to_string(),
+            Func(LispFunc {
+                func: |args: ArgsType| -> ReturnType {
+                    let ans = args.iter()
                         .map(|a| a.parse_int() )
                         .collect::<Result<Vec<_>, _>>()?
                         .iter()
                         .cloned()
                         .product();
-                    Ok(LispExpr::Integer(ans))
-                })
-            );
+                    Ok(Integer(ans))
+                },
+                inf_args: true,
+                arity: 0,
+            })
+        );
 
+        env.insert(
+            "square".to_string(),
+            Func(LispFunc {
+                func: |args: ArgsType| -> ReturnType {
+                    // TODO remove these clones
+                    // TODO should this be wrapped in an Ok?
+                    Ok(List(vec![Symbol("*".to_string()),
+                                args[0].clone(), args[0].clone()]))
+                },
+                inf_args: false,
+                arity: 1,
+            })
+        );
+
+        env.insert(
+            // always fails
+            "bad-func".to_string(),
+            Func(LispFunc {
+                func: |args: ArgsType| -> ReturnType {
+                    Ok(List(vec![Symbol("not-defined".to_string())]))
+                },
+            inf_args: false,
+            arity: 0
+            })
+        );
 
         env
     }
@@ -132,7 +179,7 @@ mod tests {
     use LispExpr::*;
 
     #[test]
-    fn eval_test() {
+    fn eval_arithmetic() {
         let mut env = LispEnv::default();
 
         let expr = List(vec![Symbol(String::from("+")),
@@ -149,5 +196,16 @@ mod tests {
                     List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
                     Integer(4)]);
         assert_eq!(eval(&expr, &mut env).unwrap(), Integer(32));
+    }
+
+    #[test]
+    fn eval_functions() {
+        let mut env = LispEnv::default();
+
+        let expr = List(vec![Symbol("square".to_string()), Integer(5)]);
+        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(25));
+
+        let expr = List(vec![Symbol("bad-func".to_string())]);
+        assert!(eval(&expr, &mut env).is_err());
     }
 }
