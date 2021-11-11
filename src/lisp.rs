@@ -11,7 +11,7 @@ struct LispFunc {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum LispExpr {
+pub enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
@@ -39,42 +39,61 @@ impl LispExpr {
             _ => Err(LispErr::TypeError),
         }
     }
+
+    // TODO this shouldn't be required
+    // This is needed because the parser creates a List of LispExprs, but it
+    // it cannot be evaluated directly because it's not in the proper format
+    // (the first element is not a Func)
+    pub fn extract(&self) -> LispExpr {
+        match self {
+            LispExpr::List(v) => v[0].clone(),
+            _ => self.clone(),
+        }
+    }
+
+    pub fn print(&self) {
+        match self {
+            LispExpr::Symbol(s) => print!("Symbol: {},", s),
+            LispExpr::Integer(n) => print!("Integer: {},", n),
+            _ => (),
+        }
+    }
+
+    pub fn eval(&self, env: &mut LispEnv) -> ReturnType {
+        match self {
+            LispExpr::Symbol(s) => match env.data.get(s) {
+                Some(e) => Ok(e.clone()),
+                None => Err(LispErr::NameError),
+            },
+            LispExpr::Integer(_) => Ok(self.clone()),
+            LispExpr::List(list) => {
+                let f = &list[0].eval(env)?.parse_fn()?;
+                // TODO does slicing here create a copy?
+                let args = list[1..].iter()
+                    .map(|a| a.eval(env))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                if !f.inf_args && f.arity != args.len() {
+                    return Err(LispErr::ArityMismatch)
+                }
+
+                // recursively evaluate until the return value is not an atom
+                (f.func)(args)?.eval(env) // TODO who owns the value here?
+            },
+            LispExpr::Func(_) => Ok(self.clone()),
+        }
+    }
 }
 
 #[derive(Debug)]
-enum LispErr {
+pub enum LispErr {
     ArityMismatch,
     NameError,
     TypeError,
 }
 
-fn eval(expr: &LispExpr, env: &mut LispEnv) -> ReturnType {
-    match expr {
-        LispExpr::Symbol(s) => match env.data.get(s) {
-            Some(e) => Ok(e.clone()),
-            None => Err(LispErr::NameError),
-        },
-        LispExpr::Integer(_) => Ok(expr.clone()),
-        LispExpr::List(list) => {
-            let f = eval(&list[0], env)?.parse_fn()?;
-            // TODO does slicing here create a copy?
-            let args = list[1..].iter()
-                .map(|a| eval(a, env))
-                .collect::<Result<Vec<_>, _>>()?;
 
-            if !f.inf_args && f.arity != args.len() {
-                return Err(LispErr::ArityMismatch)
-            }
-
-            // recursively evaluate until the return value is not an atom
-            eval(&(f.func)(args)?, env) // TODO who owns the value here?
-        },
-        LispExpr::Func(_) => Ok(expr.clone()),
-    }
-}
-
-
-struct LispEnv {
+pub struct LispEnv {
     data: HashMap<String, LispExpr>,
 }
 
@@ -83,7 +102,7 @@ impl LispEnv {
         LispEnv { data: HashMap::new() }
     }
 
-    fn default() -> LispEnv {
+    pub fn default() -> LispEnv {
         let mut env = LispEnv::new();
 
         use LispExpr::*;

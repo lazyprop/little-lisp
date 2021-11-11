@@ -17,6 +17,7 @@ much easier to do in Rust with all the types.
   - [x] Write more `LispExpr.parse()` functions.
   - [ ] Think of a better name for `LispExpr.parse_type()`. It's not actually a
     parser.
+  - [ ] Refactor parser to directly build a `LispExpr::List`
 - [x] Better error handling.
 - [ ] More general function definition. Fixed arity functions. Typechecking
   arguments.
@@ -25,9 +26,10 @@ much easier to do in Rust with all the types.
         function there but not while composing functions. This causes type
         mismatch.
 - [ ] More tests.
+  - [ ] More parser tests.
 - [ ] PARSER
-  - [ ] Basic string -> token tree parser.
-  - [ ] Parse tokens into `LispExpr` tree (ast).
+  - [x] Basic string -> token tree parser.
+  - [x] Parse tokens into `LispExpr` tree (ast).
   - [ ] Parser errors
 - [ ] Write a REPL.
 - [ ] Add more things to default environment.

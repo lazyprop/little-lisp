@@ -1,3 +1,4 @@
+mod lisp;
 mod parser;
 
 fn main() {
@@ -6,5 +7,9 @@ fn main() {
     let mut iter = whitespaced.split_whitespace();
 
     let parsed = parser::parse(&mut iter);
-    parsed.print();
+    let mut env = lisp::LispEnv::default();
+    let expr = parsed.to_lispexpr().extract();
+
+    println!("{:?}", expr);
+    println!("{:?}", expr.eval(&mut env).unwrap());
 }
