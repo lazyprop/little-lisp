@@ -4,7 +4,7 @@ type ArgsType = Vec<LispExpr>; // all lisp function take a list of arguments
 type ReturnType = Result<LispExpr, LispErr>; // all lisp functions return this type
 
 #[derive(Clone, Debug, PartialEq)]
-struct LispFunc {
+pub struct LispFunc {
     func: fn(ArgsType) -> ReturnType,
     arity: usize, // number of arguments
     inf_args: bool,
@@ -15,25 +15,26 @@ pub enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
-    Func(LispFunc)
+    Func(LispFunc),
 }
 
-
 impl LispExpr {
-    fn parse_symbol(&self) -> Result<String, LispErr> {
+    #[allow(dead_code)]
+    fn extract_symbol(&self) -> Result<String, LispErr> {
         match self {
             LispExpr::Symbol(s) => Ok(s.clone()),
             _ => Err(LispErr::TypeError),
         }
     }
-    fn parse_int(&self) -> Result<i64, LispErr> {
+
+    fn extract_int(&self) -> Result<i64, LispErr> {
         match self {
-            LispExpr::Integer(i) => Ok(i.clone()),
+            LispExpr::Integer(n) => Ok(*n),
             _ => Err(LispErr::TypeError),
         }
     }
 
-    fn parse_fn(&self) -> Result<LispFunc, LispErr> {
+    fn extract_fn(&self) -> Result<LispFunc, LispErr> {
         match self {
             LispExpr::Func(f) => Ok(f.clone()),
             _ => Err(LispErr::TypeError),
@@ -51,6 +52,7 @@ impl LispExpr {
         }
     }
 
+    #[allow(dead_code)]
     pub fn print(&self) {
         match self {
             LispExpr::Symbol(s) => print!("Symbol: {},", s),
@@ -67,19 +69,20 @@ impl LispExpr {
             },
             LispExpr::Integer(_) => Ok(self.clone()),
             LispExpr::List(list) => {
-                let f = &list[0].eval(env)?.parse_fn()?;
+                let f = &list[0].eval(env)?.extract_fn()?;
                 // TODO does slicing here create a copy?
-                let args = list[1..].iter()
+                let args = list[1..]
+                    .iter()
                     .map(|a| a.eval(env))
                     .collect::<Result<Vec<_>, _>>()?;
 
                 if !f.inf_args && f.arity != args.len() {
-                    return Err(LispErr::ArityMismatch)
+                    return Err(LispErr::ArityMismatch);
                 }
 
                 // recursively evaluate until the return value is not an atom
                 (f.func)(args)?.eval(env) // TODO who owns the value here?
-            },
+            }
             LispExpr::Func(_) => Ok(self.clone()),
         }
     }
@@ -92,14 +95,15 @@ pub enum LispErr {
     TypeError,
 }
 
-
 pub struct LispEnv {
     data: HashMap<String, LispExpr>,
 }
 
 impl LispEnv {
     fn new() -> LispEnv {
-        LispEnv { data: HashMap::new() }
+        LispEnv {
+            data: HashMap::new(),
+        }
     }
 
     pub fn default() -> LispEnv {
@@ -114,8 +118,9 @@ impl LispEnv {
                 func: |args: ArgsType| -> ReturnType {
                     // TODO too many copies?
                     // TODO find a better way to do this
-                    let ans = args.iter()
-                        .map(|a| a.parse_int() )
+                    let ans = args
+                        .iter()
+                        .map(|a| a.extract_int())
                         .collect::<Result<Vec<_>, _>>()?
                         .iter()
                         .cloned()
@@ -124,7 +129,7 @@ impl LispEnv {
                 },
                 inf_args: true,
                 arity: 0,
-            })
+            }),
         );
 
         // subtraction
@@ -132,9 +137,10 @@ impl LispEnv {
             "-".to_string(),
             Func(LispFunc {
                 func: |args: ArgsType| -> ReturnType {
-                    let first = args[0].parse_int()?;
-                    let ans: i64 = args[1..].iter()
-                        .map(|a| a.parse_int() )
+                    let first = args[0].extract_int()?;
+                    let ans: i64 = args[1..]
+                        .iter()
+                        .map(|a| a.extract_int())
                         .collect::<Result<Vec<_>, _>>()?
                         .iter()
                         .cloned()
@@ -143,7 +149,7 @@ impl LispEnv {
                 },
                 inf_args: true,
                 arity: 0,
-            })
+            }),
         );
 
         // multiplication
@@ -151,8 +157,9 @@ impl LispEnv {
             "*".to_string(),
             Func(LispFunc {
                 func: |args: ArgsType| -> ReturnType {
-                    let ans = args.iter()
-                        .map(|a| a.parse_int() )
+                    let ans = args
+                        .iter()
+                        .map(|a| a.extract_int())
                         .collect::<Result<Vec<_>, _>>()?
                         .iter()
                         .cloned()
@@ -161,7 +168,7 @@ impl LispEnv {
                 },
                 inf_args: true,
                 arity: 0,
-            })
+            }),
         );
 
         env.insert(
@@ -170,24 +177,25 @@ impl LispEnv {
                 func: |args: ArgsType| -> ReturnType {
                     // TODO remove these clones
                     // TODO should this be wrapped in an Ok?
-                    Ok(List(vec![Symbol("*".to_string()),
-                                args[0].clone(), args[0].clone()]))
+                    Ok(List(vec![
+                        Symbol("*".to_string()),
+                        args[0].clone(),
+                        args[0].clone(),
+                    ]))
                 },
                 inf_args: false,
                 arity: 1,
-            })
+            }),
         );
 
         env.insert(
             // always fails
             "bad-func".to_string(),
             Func(LispFunc {
-                func: |args: ArgsType| -> ReturnType {
-                    Ok(List(vec![Symbol("not-defined".to_string())]))
-                },
-            inf_args: false,
-            arity: 0
-            })
+                func: |_| -> ReturnType { Ok(List(vec![Symbol("not-defined".to_string())])) },
+                inf_args: false,
+                arity: 0,
+            }),
         );
 
         env
@@ -207,19 +215,25 @@ mod tests {
     fn eval_arithmetic() {
         let mut env = LispEnv::default();
 
-        let expr = List(vec![Symbol(String::from("+")),
-                    List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
-                    Integer(4)]);
+        let expr = List(vec![
+            Symbol(String::from("+")),
+            List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
+            Integer(4),
+        ]);
         assert_eq!(expr.eval(&mut env).unwrap(), Integer(12));
 
-        let expr = List(vec![Symbol(String::from("+")),
-                    List(vec![Symbol(String::from("-")), Integer(3), Integer(5)]),
-                    Integer(4)]);
+        let expr = List(vec![
+            Symbol(String::from("+")),
+            List(vec![Symbol(String::from("-")), Integer(3), Integer(5)]),
+            Integer(4),
+        ]);
         assert_eq!(expr.eval(&mut env).unwrap(), Integer(2));
 
-        let expr = List(vec![Symbol(String::from("*")),
-                    List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
-                    Integer(4)]);
+        let expr = List(vec![
+            Symbol(String::from("*")),
+            List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
+            Integer(4),
+        ]);
         assert_eq!(expr.eval(&mut env).unwrap(), Integer(32));
     }
 
@@ -233,14 +247,12 @@ mod tests {
         let expr = List(vec![Symbol("bad-func".to_string())]);
         assert!(expr.eval(&mut env).is_err());
 
-        let expr = List(vec![Symbol("square".to_string()),
-                             Integer(3),
-                             Integer(4)]);
+        let expr = List(vec![Symbol("square".to_string()), Integer(3), Integer(4)]);
 
         // TODO write better tests
         assert!(match expr.eval(&mut env) {
-                    Err(LispErr::ArityMismatch) => true,
-                    _ => false,
+            Err(LispErr::ArityMismatch) => true,
+            _ => false,
         });
     }
 }

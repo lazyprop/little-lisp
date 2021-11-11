@@ -1,7 +1,7 @@
 mod lisp;
 mod parser;
 
-use lisp::{LispExpr, LispEnv, LispErr};
+use lisp::LispEnv;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -16,7 +16,7 @@ fn main() {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                println!("Line: {}", line);
+                println!("Input: {}", line);
                 rl.add_history_entry(line.as_str());
 
                 let whitespaced = line.replace("(", " ( ").replace(")", " ) ");
@@ -24,27 +24,26 @@ fn main() {
                 let parsed = parser::parse(&mut iter);
                 let expr = parsed.to_lispexpr().extract();
 
-                println!("{:?}", expr);
-                println!("{:?}", expr.eval(&mut env).unwrap());
-            },
+                println!("Parsed Expression: {:?}", expr);
+                println!("Result: {:?}", expr.eval(&mut env));
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
-                break
-            },
+                break;
+            }
             Err(ReadlineError::Eof) => {
                 println!("CTRL-D");
-                break
-            },
+                break;
+            }
             Err(err) => {
                 println!("Error: {:?}", err);
-                break
+                break;
             }
         }
     }
 
     rl.save_history("history.txt").unwrap();
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -64,4 +63,3 @@ mod tests {
         println!("{:?}", expr.eval(&mut env).unwrap());
     }
 }
-
