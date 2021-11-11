@@ -210,17 +210,17 @@ mod tests {
         let expr = List(vec![Symbol(String::from("+")),
                     List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(12));
+        assert_eq!(expr.eval(&mut env).unwrap(), Integer(12));
 
         let expr = List(vec![Symbol(String::from("+")),
                     List(vec![Symbol(String::from("-")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(2));
+        assert_eq!(expr.eval(&mut env).unwrap(), Integer(2));
 
         let expr = List(vec![Symbol(String::from("*")),
                     List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
                     Integer(4)]);
-        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(32));
+        assert_eq!(expr.eval(&mut env).unwrap(), Integer(32));
     }
 
     #[test]
@@ -228,17 +228,17 @@ mod tests {
         let mut env = LispEnv::default();
 
         let expr = List(vec![Symbol("square".to_string()), Integer(5)]);
-        assert_eq!(eval(&expr, &mut env).unwrap(), Integer(25));
+        assert_eq!(expr.eval(&mut env).unwrap(), Integer(25));
 
         let expr = List(vec![Symbol("bad-func".to_string())]);
-        assert!(eval(&expr, &mut env).is_err());
+        assert!(expr.eval(&mut env).is_err());
 
         let expr = List(vec![Symbol("square".to_string()),
                              Integer(3),
                              Integer(4)]);
 
         // TODO write better tests
-        assert!(match eval(&expr, &mut env) {
+        assert!(match expr.eval(&mut env) {
                     Err(LispErr::ArityMismatch) => true,
                     _ => false,
         });
