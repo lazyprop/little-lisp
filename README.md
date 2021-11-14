@@ -31,5 +31,8 @@ much easier to do in Rust with all the types.
   - [x] Basic string -> token tree parser.
   - [x] Parse tokens into `LispExpr` tree (ast).
   - [ ] Parser errors
-- [ ] Write a REPL.
+- [x] Write a REPL.
+  - [ ] Unwrap results before printing.
+  - [ ] Better error messages.
+- [ ] Handle special conditions.
 - [ ] Add more things to default environment.

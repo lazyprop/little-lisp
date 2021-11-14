@@ -16,6 +16,8 @@ pub enum LispExpr {
     Integer(i64),
     List(Vec<LispExpr>),
     Func(LispFunc),
+    Bool(bool),
+    Null,
 }
 
 impl LispExpr {
@@ -23,29 +25,37 @@ impl LispExpr {
     fn extract_symbol(&self) -> Result<String, LispErr> {
         match self {
             LispExpr::Symbol(s) => Ok(s.clone()),
-            _ => Err(LispErr::TypeError),
+            _ => Err(LispErr::TypeError("expected symbol".to_string())),
         }
     }
 
     fn extract_int(&self) -> Result<i64, LispErr> {
         match self {
             LispExpr::Integer(n) => Ok(*n),
-            _ => Err(LispErr::TypeError),
+            _ => Err(LispErr::TypeError("expected integer".to_string())),
         }
     }
 
     fn extract_fn(&self) -> Result<LispFunc, LispErr> {
         match self {
             LispExpr::Func(f) => Ok(f.clone()),
-            _ => Err(LispErr::TypeError),
+            _ => Err(LispErr::TypeError("expected func".to_string())),
         }
     }
+
+    fn extract_bool(&self) -> Result<bool, LispErr> {
+        match self {
+            LispExpr::Bool(b) => Ok(*b),
+            _ => Err(LispErr::TypeError("expected bool".to_string())),
+        }
+    }
+
 
     // TODO this shouldn't be required
     // This is needed because the parser creates a List of LispExprs, but it
     // it cannot be evaluated directly because it's not in the proper format
     // (the first element is not a Func)
-    pub fn extract(&self) -> LispExpr {
+    pub fn extract_first(&self) -> LispExpr {
         match self {
             LispExpr::List(v) => v[0].clone(),
             _ => self.clone(),
@@ -63,13 +73,37 @@ impl LispExpr {
 
     pub fn eval(&self, env: &mut LispEnv) -> ReturnType {
         match self {
-            LispExpr::Symbol(s) => match env.data.get(s) {
+            LispExpr::Symbol(s) => match env.get(s) {
                 Some(e) => Ok(e.clone()),
                 None => Err(LispErr::NameError),
             },
             LispExpr::Integer(_) => Ok(self.clone()),
             LispExpr::List(list) => {
+                if list.len() == 0 {
+                    return Ok(LispExpr::Null);
+                }
+
+                // handle special forms
+                match &list[0].extract_symbol()?.as_str() {
+                    &"define" => {
+                        if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+
+                        match &list[1] {
+                            LispExpr::Symbol(s) => {
+                                //let third = list[2].extract_symbol()?;
+                                env.insert(s.clone(), list[2].clone());
+                                return Ok(LispExpr::Null);
+                            }
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+
                 let f = &list[0].eval(env)?.extract_fn()?;
+
                 // TODO does slicing here create a copy?
                 let args = list[1..]
                     .iter()
@@ -84,6 +118,8 @@ impl LispExpr {
                 (f.func)(args)?.eval(env) // TODO who owns the value here?
             }
             LispExpr::Func(_) => Ok(self.clone()),
+            LispExpr::Bool(_) => Ok(self.clone()),
+            LispExpr::Null => Ok(self.clone()),
         }
     }
 }
@@ -92,7 +128,7 @@ impl LispExpr {
 pub enum LispErr {
     ArityMismatch,
     NameError,
-    TypeError,
+    TypeError(String),
 }
 
 pub struct LispEnv {
@@ -204,6 +240,15 @@ impl LispEnv {
     fn insert(&mut self, name: String, expr: LispExpr) {
         self.data.insert(name, expr);
     }
+
+    fn get(&self, name: &str) -> Option<LispExpr> {
+        let res = self.data.get(name)?;
+        if let LispExpr::Symbol(new_name) = res {
+            self.get(new_name)
+        } else {
+            Some(res.clone())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -254,5 +299,17 @@ mod tests {
             Err(LispErr::ArityMismatch) => true,
             _ => false,
         });
+    }
+
+    #[test]
+    fn special_forms() {
+        let mut env = LispEnv::default();
+        let expr = List(vec![
+            Symbol("define".to_string()),
+            Symbol("add".to_string()),
+            Symbol("+".to_string()),
+        ]);
+        expr.eval(&mut env).unwrap();
+
     }
 }

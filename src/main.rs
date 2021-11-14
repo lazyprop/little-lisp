@@ -22,7 +22,7 @@ fn main() {
                 let whitespaced = line.replace("(", " ( ").replace(")", " ) ");
                 let mut iter = whitespaced.split_whitespace();
                 let parsed = parser::parse(&mut iter);
-                let expr = parsed.to_lispexpr().extract();
+                let expr = parsed.to_lispexpr().extract_first();
 
                 println!("Parsed Expression: {:?}", expr);
                 println!("Result: {:?}", expr.eval(&mut env));
@@ -57,7 +57,7 @@ mod tests {
 
         let parsed = parser::parse(&mut iter);
         let mut env = lisp::LispEnv::default();
-        let expr = parsed.to_lispexpr().extract();
+        let expr = parsed.to_lispexpr().extract_first();
 
         println!("{:?}", expr);
         println!("{:?}", expr.eval(&mut env).unwrap());
