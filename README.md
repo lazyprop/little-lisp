@@ -15,13 +15,14 @@ much easier to do in Rust with all the types.
   - [x] Make everything functional.
   - [ ] Find a better way to do built-in `+` and `*` functions
   - [x] Write more `LispExpr.parse()` functions.
-  - [ ] Think of a better name for `LispExpr.parse_type()`. It's not actually a
+  - [x] Think of a better name for `LispExpr.parse_type()`. It's not actually a
     parser.
-  - [ ] Refactor parser to directly build a `LispExpr::List`
+  - [x] Refactor parser to directly build a `LispExpr::List`
+  - [ ] All the `LispEnv`s are not mutable as of now because of `Rc`. Fix.
 - [x] Better error handling.
 - [ ] More general function definition. Fixed arity functions. Typechecking
   arguments.
-  - [ ] Figure out what type should the function be and return.
+  - [x] Figure out what type should the function be and return.
         Is it a `LispExpr`? Is it a `LispFunc`. In `+` etc. we're evaluating the
         function there but not while composing functions. This causes type
         mismatch.
@@ -36,3 +37,4 @@ much easier to do in Rust with all the types.
   - [ ] Better error messages.
 - [ ] Handle special conditions.
 - [ ] Add more things to default environment.
+  - [ ] Implement arithmetic.

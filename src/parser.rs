@@ -63,11 +63,3 @@ pub fn parse(iter: &mut dyn Iterator<Item = &str>) -> AstNode {
     }
     ast
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn parser_test() {
-        assert!(true);
-    }
-}

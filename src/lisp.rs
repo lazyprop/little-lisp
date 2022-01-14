@@ -1,26 +1,43 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 type ArgsType = Vec<LispExpr>; // all lisp function take a list of arguments
 type ReturnType = Result<LispExpr, LispErr>; // all lisp functions return this type
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct LispFunc {
-    func: fn(ArgsType) -> ReturnType,
-    arity: usize, // number of arguments
-    inf_args: bool,
+    params: Vec<LispExpr>,
+    body: LispExpr,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl LispFunc {
+    fn call(self: &LispFunc, args: Vec<LispExpr>, env: Rc<LispEnv>) -> ReturnType {
+        let mut local_env = LispEnv::from_parent(env);
+        for (i, x) in self.params.iter().enumerate() {
+            local_env.insert(x.extract_symbol()?, args[i].clone());
+        }
+        self.body.eval(Rc::new(local_env))
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum LispExpr {
     Symbol(String),
     Integer(i64),
     List(Vec<LispExpr>),
-    Func(LispFunc),
     Bool(bool),
+    Func(Box<LispFunc>),
     Null,
 }
 
 impl LispExpr {
+    fn extract_list(&self) -> Result<Vec<LispExpr>, LispErr> {
+        match self {
+            LispExpr::List(l) => Ok(l.clone()),
+            _ => Err(LispErr::TypeError("expected list".to_string())),
+        }
+    }
+
     #[allow(dead_code)]
     fn extract_symbol(&self) -> Result<String, LispErr> {
         match self {
@@ -36,13 +53,7 @@ impl LispExpr {
         }
     }
 
-    fn extract_fn(&self) -> Result<LispFunc, LispErr> {
-        match self {
-            LispExpr::Func(f) => Ok(f.clone()),
-            _ => Err(LispErr::TypeError("expected func".to_string())),
-        }
-    }
-
+    #[allow(dead_code)]
     fn extract_bool(&self) -> Result<bool, LispErr> {
         match self {
             LispExpr::Bool(b) => Ok(*b),
@@ -50,6 +61,12 @@ impl LispExpr {
         }
     }
 
+    fn extract_fn(&self) -> Result<Box<LispFunc>, LispErr> {
+        match self {
+            LispExpr::Func(f) => Ok(f.clone()),
+            _ => Err(LispErr::TypeError("expected function".to_string())),
+        }
+    }
 
     // TODO this shouldn't be required
     // This is needed because the parser creates a List of LispExprs, but it
@@ -71,15 +88,15 @@ impl LispExpr {
         }
     }
 
-    pub fn eval(&self, env: &mut LispEnv) -> ReturnType {
+    pub fn eval(&self, env: Rc<LispEnv>) -> ReturnType {
         match self {
             LispExpr::Symbol(s) => match env.get(s) {
-                Some(e) => Ok(e.clone()),
+                Some(e) => Ok(e),
                 None => Err(LispErr::NameError),
             },
             LispExpr::Integer(_) => Ok(self.clone()),
             LispExpr::List(list) => {
-                if list.len() == 0 {
+                if list.is_empty() {
                     return Ok(LispExpr::Null);
                 }
 
@@ -91,31 +108,48 @@ impl LispExpr {
                         }
 
                         match &list[1] {
+                            // we're just defining a symbol
                             LispExpr::Symbol(s) => {
-                                //let third = list[2].extract_symbol()?;
-                                env.insert(s.clone(), list[2].clone());
+                                //env.insert(s.clone(), list[2].clone());
+                                return Ok(LispExpr::Null);
+                            }
+                            // we're defining a procedure
+                            LispExpr::List(lst) => {
+                                let fname = &lst[0];
+                                let argnames = &lst[1..];
+                                let expr = &list[2];
+
+                                println!("Function Name: {:?}", fname);
+                                println!("Arguments: {:?}", argnames);
+                                println!("Expression: {:?}", expr);
+
                                 return Ok(LispExpr::Null);
                             }
                             _ => (),
                         }
-                    },
+                    }
                     _ => (),
                 }
-
-                let f = &list[0].eval(env)?.extract_fn()?;
 
                 // TODO does slicing here create a copy?
                 let args = list[1..]
                     .iter()
-                    .map(|a| a.eval(env))
+                    .map(|a| a.eval(Rc::clone(&env)))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                if !f.inf_args && f.arity != args.len() {
+                let func = &list[0].eval(Rc::clone(&env))?.extract_fn()?;
+                let args = &list[1..];
+                println!("{:?}", args);
+
+                if args.len() != func.params.len() {
                     return Err(LispErr::ArityMismatch);
                 }
 
                 // recursively evaluate until the return value is not an atom
-                (f.func)(args)?.eval(env) // TODO who owns the value here?
+                func.call(args.to_vec(), Rc::clone(&env))
+
+                //(f.func)(args)?.eval(env) // TODO who owns the value here?
+                //Ok(LispExpr::Null)
             }
             LispExpr::Func(_) => Ok(self.clone()),
             LispExpr::Bool(_) => Ok(self.clone()),
@@ -131,109 +165,37 @@ pub enum LispErr {
     TypeError(String),
 }
 
+#[derive(Debug)]
 pub struct LispEnv {
     data: HashMap<String, LispExpr>,
+    parent: Option<Rc<LispEnv>>,
 }
 
 impl LispEnv {
     fn new() -> LispEnv {
         LispEnv {
             data: HashMap::new(),
+            parent: None,
         }
     }
 
     pub fn default() -> LispEnv {
         let mut env = LispEnv::new();
-
-        use LispExpr::*;
-
-        // addition
+        let a = "a".to_string();
+        let b = "b".to_string();
         env.insert(
-            "+".to_string(),
-            Func(LispFunc {
-                func: |args: ArgsType| -> ReturnType {
-                    // TODO too many copies?
-                    // TODO find a better way to do this
-                    let ans = args
-                        .iter()
-                        .map(|a| a.extract_int())
-                        .collect::<Result<Vec<_>, _>>()?
-                        .iter()
-                        .cloned()
-                        .sum();
-                    Ok(Integer(ans))
-                },
-                inf_args: true,
-                arity: 0,
-            }),
+            "first".to_string(),
+            LispExpr::Func(Box::new(LispFunc {
+                params: vec![LispExpr::Symbol(a.clone()), LispExpr::Symbol(b)],
+                body: LispExpr::Symbol(a),
+            })),
         );
+        env
+    }
 
-        // subtraction
-        env.insert(
-            "-".to_string(),
-            Func(LispFunc {
-                func: |args: ArgsType| -> ReturnType {
-                    let first = args[0].extract_int()?;
-                    let ans: i64 = args[1..]
-                        .iter()
-                        .map(|a| a.extract_int())
-                        .collect::<Result<Vec<_>, _>>()?
-                        .iter()
-                        .cloned()
-                        .sum();
-                    Ok(Integer(first - ans))
-                },
-                inf_args: true,
-                arity: 0,
-            }),
-        );
-
-        // multiplication
-        env.insert(
-            "*".to_string(),
-            Func(LispFunc {
-                func: |args: ArgsType| -> ReturnType {
-                    let ans = args
-                        .iter()
-                        .map(|a| a.extract_int())
-                        .collect::<Result<Vec<_>, _>>()?
-                        .iter()
-                        .cloned()
-                        .product();
-                    Ok(Integer(ans))
-                },
-                inf_args: true,
-                arity: 0,
-            }),
-        );
-
-        env.insert(
-            "square".to_string(),
-            Func(LispFunc {
-                func: |args: ArgsType| -> ReturnType {
-                    // TODO remove these clones
-                    // TODO should this be wrapped in an Ok?
-                    Ok(List(vec![
-                        Symbol("*".to_string()),
-                        args[0].clone(),
-                        args[0].clone(),
-                    ]))
-                },
-                inf_args: false,
-                arity: 1,
-            }),
-        );
-
-        env.insert(
-            // always fails
-            "bad-func".to_string(),
-            Func(LispFunc {
-                func: |_| -> ReturnType { Ok(List(vec![Symbol("not-defined".to_string())])) },
-                inf_args: false,
-                arity: 0,
-            }),
-        );
-
+    fn from_parent(parent: Rc<LispEnv>) -> LispEnv {
+        let mut env = LispEnv::new();
+        env.parent = Some(parent);
         env
     }
 
@@ -242,11 +204,22 @@ impl LispEnv {
     }
 
     fn get(&self, name: &str) -> Option<LispExpr> {
-        let res = self.data.get(name)?;
-        if let LispExpr::Symbol(new_name) = res {
-            self.get(new_name)
-        } else {
-            Some(res.clone())
+        //let res = self.data.get(name)?;
+        match self.data.get(name) {
+            Some(res) => {
+                if let LispExpr::Symbol(new_name) = res {
+                    self.get(new_name)
+                } else {
+                    Some(res.clone())
+                }
+            }
+            None => {
+                if let Some(parent) = &self.parent {
+                    parent.get(name)
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -310,6 +283,5 @@ mod tests {
             Symbol("+".to_string()),
         ]);
         expr.eval(&mut env).unwrap();
-
     }
 }
