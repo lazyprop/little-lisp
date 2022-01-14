@@ -12,9 +12,10 @@ pub struct LispFunc {
 
 impl LispFunc {
     fn call(self: &LispFunc, args: Vec<LispExpr>, env: Rc<LispEnv>) -> ReturnType {
-        let mut local_env = LispEnv::from_parent(env);
+        let mut local_env = LispEnv::from_parent(Rc::clone(&env));
         for (i, x) in self.params.iter().enumerate() {
-            local_env.insert(x.extract_symbol()?, args[i].clone());
+            let a = args[i].clone().eval(Rc::clone(&env))?;
+            local_env.insert(x.extract_symbol()?, a);
         }
         self.body.eval(Rc::new(local_env))
     }
@@ -119,9 +120,9 @@ impl LispExpr {
                                 let argnames = &lst[1..];
                                 let expr = &list[2];
 
-                                println!("Function Name: {:?}", fname);
-                                println!("Arguments: {:?}", argnames);
-                                println!("Expression: {:?}", expr);
+                                //println!("Function Name: {:?}", fname);
+                                //println!("Arguments: {:?}", argnames);
+                                //println!("Expression: {:?}", expr);
 
                                 return Ok(LispExpr::Null);
                             }
@@ -139,7 +140,6 @@ impl LispExpr {
 
                 let func = &list[0].eval(Rc::clone(&env))?.extract_fn()?;
                 let args = &list[1..];
-                println!("{:?}", args);
 
                 if args.len() != func.params.len() {
                     return Err(LispErr::ArityMismatch);
@@ -147,9 +147,6 @@ impl LispExpr {
 
                 // recursively evaluate until the return value is not an atom
                 func.call(args.to_vec(), Rc::clone(&env))
-
-                //(f.func)(args)?.eval(env) // TODO who owns the value here?
-                //Ok(LispExpr::Null)
             }
             LispExpr::Func(_) => Ok(self.clone()),
             LispExpr::Bool(_) => Ok(self.clone()),
