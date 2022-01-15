@@ -1,6 +1,9 @@
 # Little Lisp Interpreter in Rust
 
-At this point this is just a poorly written calculator.
+~~At this point this is just a poorly written calculator.~~ \
+At one point it *was* just a poorly written calculator. Now it doesn't even do
+arithmetic.
+
 
 
 The `main.py` is what I was originally trying (huge failure). Turns out it's
