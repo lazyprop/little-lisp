@@ -168,6 +168,42 @@ impl LispExpr {
                         return Ok(LispExpr::Bool(ans));
                     }
 
+                    &"<" => {
+                        if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let lhs = list[1].eval(env)?.extract_int()?;
+                        let rhs = list[2].eval(env)?.extract_int()?;
+                        return Ok(LispExpr::Bool(lhs < rhs));
+                    }
+
+                    &">" => {
+                        if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let lhs = list[1].eval(env)?.extract_int()?;
+                        let rhs = list[2].eval(env)?.extract_int()?;
+                        return Ok(LispExpr::Bool(lhs > rhs));
+                    }
+
+                    &"<=" => {
+                        if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let lhs = list[1].eval(env)?.extract_int()?;
+                        let rhs = list[2].eval(env)?.extract_int()?;
+                        return Ok(LispExpr::Bool(lhs <= rhs));
+                    }
+
+                    &">=" => {
+                        if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let lhs = list[1].eval(env)?.extract_int()?;
+                        let rhs = list[2].eval(env)?.extract_int()?;
+                        return Ok(LispExpr::Bool(lhs >= rhs));
+                    }
+
                     &"cons" => {
                         if list.len() != 3 {
                             return Err(LispErr::ArityMismatch);
