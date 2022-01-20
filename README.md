@@ -40,4 +40,5 @@ much easier to do in Rust with all the types.
   - [ ] Better error messages.
 - [ ] Handle special conditions.
 - [ ] Add more things to default environment.
-  - [ ] Implement arithmetic.
+  - [x] Implement arithmetic.
+  - [ ] Numbers should be floats.
