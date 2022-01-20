@@ -177,6 +177,31 @@ impl LispExpr {
                         return Ok(LispExpr::Cons(Box::new(lhs), Box::new(rhs)));
                     }
 
+                    &"car" => {
+                        if list.len() != 2 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let res = list[1].eval(env)?;
+                        if let LispExpr::Cons(lhs, rhs) = res {
+                            return Ok(*lhs);
+                        } else {
+                            return Err(LispErr::TypeError("expected cons".to_string()));
+                        }
+                    }
+
+                    &"cdr" => {
+                        if list.len() != 2 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let res = list[1].eval(env)?;
+                        if let LispExpr::Cons(lhs, rhs) = res {
+                            return Ok(*rhs);
+                        } else {
+                            return Err(LispErr::TypeError("expected cons".to_string()));
+                        }
+                    }
+
+
                     &"define" => {
                         if list.len() < 3 {
                             return Err(LispErr::ArityMismatch);
