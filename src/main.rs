@@ -53,36 +53,3 @@ fn main() {
 
     rl.save_history("history.txt").unwrap();
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_test() {
-        let inp = "(+ (+ 2 3) (+ 4 5 (+ 6 7))".to_string();
-        let whitespaced = inp.replace("(", " ( ").replace(")", " ) ");
-        let mut iter = whitespaced.split_whitespace();
-
-        let parsed = parser::parse(&mut iter);
-        let mut env = lisp::LispEnv::default();
-        let expr = parsed.to_lispexpr().extract_first();
-
-        println!("{:?}", expr);
-        println!("{:?}", expr.eval(&mut env).unwrap());
-    }
-
-    #[test]
-    fn main_test() {
-        let inp = "(define (add a b) (+ a b))".to_string();
-        let whitespaced = inp.replace("(", " ( ").replace(")", " ) ");
-        let mut iter = whitespaced.split_whitespace();
-
-        let parsed = parser::parse(&mut iter);
-        let mut env = lisp::LispEnv::default();
-        let expr = parsed.to_lispexpr().extract_first();
-
-        println!("{:?}", expr);
-        println!("{:?}", expr.eval(&mut env).unwrap());
-    }
-}
