@@ -21,9 +21,9 @@ much easier to do in Rust with all the types.
   - [x] Think of a better name for `LispExpr.parse_type()`. It's not actually a
     parser.
   - [x] Refactor parser to directly build a `LispExpr::List`
-  - [ ] All the `LispEnv`s are not mutable as of now because of `Rc`. Fix.
+  - [x] All the `LispEnv`s are not mutable as of now because of `Rc`. Fix.
 - [x] Better error handling.
-- [ ] More general function definition. Fixed arity functions. Typechecking
+- [x] More general function definition. Fixed arity functions. Typechecking
   arguments.
   - [x] Figure out what type should the function be and return.
         Is it a `LispExpr`? Is it a `LispFunc`. In `+` etc. we're evaluating the
@@ -36,9 +36,9 @@ much easier to do in Rust with all the types.
   - [x] Parse tokens into `LispExpr` tree (ast).
   - [ ] Parser errors
 - [x] Write a REPL.
-  - [ ] Unwrap results before printing.
+  - [x] Unwrap results before printing.
   - [ ] Better error messages.
-- [ ] Handle special conditions.
+- [x] Handle special conditions.
 - [ ] Add more things to default environment.
   - [x] Implement arithmetic.
   - [ ] Numbers should be floats.
