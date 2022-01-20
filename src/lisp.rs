@@ -170,9 +170,10 @@ impl LispExpr {
 
                                 return Ok(LispExpr::Null);
                             }
-                            _ => (),
+                            _ => return Err(LispErr::TypeError("invalid syntax");,
                         }
                     }
+
                     _ => (),
                 }
 
@@ -253,67 +254,5 @@ impl LispEnv {
             }
         }
         None
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use LispExpr::*;
-
-    #[test]
-    fn eval_arithmetic() {
-        let mut env = LispEnv::default();
-
-        let expr = List(vec![
-            Symbol(String::from("+")),
-            List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
-            Integer(4),
-        ]);
-        assert_eq!(expr.eval(&mut env).unwrap(), Integer(12));
-
-        let expr = List(vec![
-            Symbol(String::from("+")),
-            List(vec![Symbol(String::from("-")), Integer(3), Integer(5)]),
-            Integer(4),
-        ]);
-        assert_eq!(expr.eval(&mut env).unwrap(), Integer(2));
-
-        let expr = List(vec![
-            Symbol(String::from("*")),
-            List(vec![Symbol(String::from("+")), Integer(3), Integer(5)]),
-            Integer(4),
-        ]);
-        assert_eq!(expr.eval(&mut env).unwrap(), Integer(32));
-    }
-
-    #[test]
-    fn eval_functions() {
-        let mut env = LispEnv::default();
-
-        let expr = List(vec![Symbol("square".to_string()), Integer(5)]);
-        assert_eq!(expr.eval(&mut env).unwrap(), Integer(25));
-
-        let expr = List(vec![Symbol("bad-func".to_string())]);
-        assert!(expr.eval(&mut env).is_err());
-
-        let expr = List(vec![Symbol("square".to_string()), Integer(3), Integer(4)]);
-
-        // TODO write better tests
-        assert!(match expr.eval(&mut env) {
-            Err(LispErr::ArityMismatch) => true,
-            _ => false,
-        });
-    }
-
-    #[test]
-    fn special_forms() {
-        let mut env = LispEnv::default();
-        let expr = List(vec![
-            Symbol("define".to_string()),
-            Symbol("add".to_string()),
-            Symbol("+".to_string()),
-        ]);
-        expr.eval(&mut env).unwrap();
     }
 }
