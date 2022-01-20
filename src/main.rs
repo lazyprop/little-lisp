@@ -1,32 +1,12 @@
 mod lisp;
 mod parser;
 
-use lisp::LispEnv;
+use lisp::{LispEnv, LispExpr};
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-fn maintest() {
-    // for testing
-    let line = "(define (add a b) (+ a b))".to_string();
-    //let mut env = Rc::new(LispEnv::default());
-    let mut env = LispEnv::default();
-
-    println!("Input: {}", line);
-
-    let whitespaced = line.replace("(", " ( ").replace(")", " ) ");
-    let mut iter = whitespaced.split_whitespace();
-    let parsed = parser::parse(&mut iter);
-    let expr = parsed.to_lispexpr().extract_first();
-
-    println!("Parsed Expression: {:?}\n", expr);
-    println!("Result: {:?}", expr.eval(&mut env));
-}
-
 fn main() {
-    maintest();
-
-    //let mut env = Rc::new(LispEnv::default());
     let mut env = LispEnv::default();
 
     // `()` can be used when no completer is required
@@ -36,7 +16,7 @@ fn main() {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                println!("Input: {}", line);
+                //println!("Input: {}", line);
                 rl.add_history_entry(line.as_str());
 
                 let whitespaced = line.replace("(", " ( ").replace(")", " ) ");
@@ -44,8 +24,17 @@ fn main() {
                 let parsed = parser::parse(&mut iter);
                 let expr = parsed.to_lispexpr().extract_first();
 
-                println!("Parsed Expression: {:?}\n", expr);
-                println!("Result: {:?}", expr.eval(&mut env));
+                //println!("Parsed Expression: {:?}\n", expr);
+                let res = expr.eval(&mut env);
+                match res {
+                    Ok(val) => match val {
+                        LispExpr::Integer(i) => println!("{}", i),
+                        LispExpr::Bool(b) => println!("{}", b),
+                        LispExpr::Null => (),
+                        _ => println!("void"),
+                    },
+                    Err(e) => println!("error: {:?}", e),
+                };
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");

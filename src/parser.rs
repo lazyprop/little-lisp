@@ -53,7 +53,7 @@ fn to_lispexpr(token: &str) -> LispExpr {
             "false" => LispExpr::Bool(false),
 
             _ => LispExpr::Symbol(token.to_string()),
-        }
+        },
     }
 }
 

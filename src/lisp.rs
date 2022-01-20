@@ -150,16 +150,10 @@ impl LispExpr {
                         let lhs = list[1].eval(env)?;
                         let rhs = list[2].eval(env)?;
                         let ans = match (lhs, rhs) {
-                            (LispExpr::Integer(l), LispExpr::Integer(r)) => {
-                                l == r
-                            }
-                            (LispExpr::Symbol(l), LispExpr::Symbol(r)) => {
-                                l == r
-                            }
-                            (LispExpr::Bool(l), LispExpr::Bool(r)) => {
-                                l == r
-                            }
-                            _ => false
+                            (LispExpr::Integer(l), LispExpr::Integer(r)) => l == r,
+                            (LispExpr::Symbol(l), LispExpr::Symbol(r)) => l == r,
+                            (LispExpr::Bool(l), LispExpr::Bool(r)) => l == r,
+                            _ => false,
                         };
                         return Ok(LispExpr::Bool(ans));
                     }
@@ -192,8 +186,7 @@ impl LispExpr {
                                 return Ok(LispExpr::Null);
                             }
                             _ => {
-                                return Err(LispErr::TypeError(
-                                        "invalid syntax".to_string()));
+                                return Err(LispErr::TypeError("invalid syntax".to_string()));
                             }
                         }
                     }
