@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 
 type ArgsType = Vec<LispExpr>; // all lisp function take a list of arguments
 type ReturnType = Result<LispExpr, LispErr>; // all lisp functions return this type
@@ -11,13 +10,15 @@ pub struct LispFunc {
 }
 
 impl LispFunc {
-    fn call(self: &LispFunc, args: Vec<LispExpr>, env: Rc<LispEnv>) -> ReturnType {
-        let mut local_env = LispEnv::from_parent(Rc::clone(&env));
+    fn call(self: &LispFunc, args: Vec<LispExpr>, env: &mut LispEnv) -> ReturnType {
+        env.new_frame();
         for (i, x) in self.params.iter().enumerate() {
-            let a = args[i].clone().eval(Rc::clone(&env))?;
-            local_env.insert(x.extract_symbol()?, a);
+            let a = args[i].clone().eval(env)?;
+            env.insert(x.extract_symbol()?, a);
         }
-        self.body.eval(Rc::new(local_env))
+        let res = self.body.eval(env);
+        env.pop_frame();
+        res
     }
 }
 
@@ -32,6 +33,7 @@ pub enum LispExpr {
 }
 
 impl LispExpr {
+    #[allow(dead_code)]
     fn extract_list(&self) -> Result<Vec<LispExpr>, LispErr> {
         match self {
             LispExpr::List(l) => Ok(l.clone()),
@@ -39,7 +41,6 @@ impl LispExpr {
         }
     }
 
-    #[allow(dead_code)]
     fn extract_symbol(&self) -> Result<String, LispErr> {
         match self {
             LispExpr::Symbol(s) => Ok(s.clone()),
@@ -47,6 +48,7 @@ impl LispExpr {
         }
     }
 
+    #[allow(dead_code)]
     fn extract_int(&self) -> Result<i64, LispErr> {
         match self {
             LispExpr::Integer(n) => Ok(*n),
@@ -89,7 +91,7 @@ impl LispExpr {
         }
     }
 
-    pub fn eval(&self, env: Rc<LispEnv>) -> ReturnType {
+    pub fn eval(&self, env: &mut LispEnv) -> ReturnType {
         match self {
             LispExpr::Symbol(s) => match env.get(s) {
                 Some(e) => Ok(e),
@@ -111,18 +113,22 @@ impl LispExpr {
                         match &list[1] {
                             // we're just defining a symbol
                             LispExpr::Symbol(s) => {
-                                //env.insert(s.clone(), list[2].clone());
+                                env.insert(s.clone(), list[2].clone());
                                 return Ok(LispExpr::Null);
                             }
                             // we're defining a procedure
                             LispExpr::List(lst) => {
-                                let fname = &lst[0];
-                                let argnames = &lst[1..];
-                                let expr = &list[2];
+                                let fname = lst[0].extract_symbol()?;
+                                let params = &lst[1..];
+                                let body = &list[2];
 
-                                //println!("Function Name: {:?}", fname);
-                                //println!("Arguments: {:?}", argnames);
-                                //println!("Expression: {:?}", expr);
+                                env.insert(
+                                    fname,
+                                    LispExpr::Func(Box::new(LispFunc {
+                                        params: params.to_vec(),
+                                        body: body.clone(),
+                                    })),
+                                );
 
                                 return Ok(LispExpr::Null);
                             }
@@ -132,21 +138,16 @@ impl LispExpr {
                     _ => (),
                 }
 
-                // TODO does slicing here create a copy?
-                let args = list[1..]
-                    .iter()
-                    .map(|a| a.eval(Rc::clone(&env)))
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                let func = &list[0].eval(Rc::clone(&env))?.extract_fn()?;
+                let func = &list[0].eval(env)?.extract_fn()?;
                 let args = &list[1..];
+                //println!("{:?}", args);
 
                 if args.len() != func.params.len() {
                     return Err(LispErr::ArityMismatch);
                 }
 
                 // recursively evaluate until the return value is not an atom
-                func.call(args.to_vec(), Rc::clone(&env))
+                func.call(args.to_vec(), env)
             }
             LispExpr::Func(_) => Ok(self.clone()),
             LispExpr::Bool(_) => Ok(self.clone()),
@@ -164,15 +165,13 @@ pub enum LispErr {
 
 #[derive(Debug)]
 pub struct LispEnv {
-    data: HashMap<String, LispExpr>,
-    parent: Option<Rc<LispEnv>>,
+    stack: Vec<HashMap<String, LispExpr>>,
 }
 
 impl LispEnv {
     fn new() -> LispEnv {
         LispEnv {
-            data: HashMap::new(),
-            parent: None,
+            stack: vec![HashMap::new()],
         }
     }
 
@@ -190,34 +189,32 @@ impl LispEnv {
         env
     }
 
-    fn from_parent(parent: Rc<LispEnv>) -> LispEnv {
-        let mut env = LispEnv::new();
-        env.parent = Some(parent);
-        env
+    fn new_frame(&mut self) {
+        self.stack.push(HashMap::new());
+    }
+
+    fn pop_frame(&mut self) {
+        self.stack.pop();
     }
 
     fn insert(&mut self, name: String, expr: LispExpr) {
-        self.data.insert(name, expr);
+        self.stack.last_mut().unwrap().insert(name, expr);
     }
 
     fn get(&self, name: &str) -> Option<LispExpr> {
-        //let res = self.data.get(name)?;
-        match self.data.get(name) {
-            Some(res) => {
-                if let LispExpr::Symbol(new_name) = res {
-                    self.get(new_name)
-                } else {
-                    Some(res.clone())
+        for i in (0..self.stack.len()).rev() {
+            match self.stack[i].get(name) {
+                Some(res) => {
+                    if let LispExpr::Symbol(new_name) = res {
+                        return self.get(new_name);
+                    } else {
+                        return Some(res.clone());
+                    }
                 }
-            }
-            None => {
-                if let Some(parent) = &self.parent {
-                    parent.get(name)
-                } else {
-                    None
-                }
+                None => continue,
             }
         }
+        None
     }
 }
 

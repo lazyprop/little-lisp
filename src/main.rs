@@ -1,8 +1,6 @@
 mod lisp;
 mod parser;
 
-use std::rc::Rc;
-
 use lisp::LispEnv;
 
 use rustyline::error::ReadlineError;
@@ -11,7 +9,8 @@ use rustyline::Editor;
 fn maintest() {
     // for testing
     let line = "(define (add a b) (+ a b))".to_string();
-    let mut env = Rc::new(LispEnv::default());
+    //let mut env = Rc::new(LispEnv::default());
+    let mut env = LispEnv::default();
 
     println!("Input: {}", line);
 
@@ -21,13 +20,14 @@ fn maintest() {
     let expr = parsed.to_lispexpr().extract_first();
 
     println!("Parsed Expression: {:?}\n", expr);
-    println!("Result: {:?}", expr.eval(env));
+    println!("Result: {:?}", expr.eval(&mut env));
 }
 
 fn main() {
     maintest();
 
-    let mut env = Rc::new(LispEnv::default());
+    //let mut env = Rc::new(LispEnv::default());
+    let mut env = LispEnv::default();
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -45,7 +45,7 @@ fn main() {
                 let expr = parsed.to_lispexpr().extract_first();
 
                 println!("Parsed Expression: {:?}\n", expr);
-                println!("Result: {:?}", expr.eval(Rc::clone(&env)));
+                println!("Result: {:?}", expr.eval(&mut env));
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
