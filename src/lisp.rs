@@ -198,12 +198,22 @@ impl LispExpr {
                         }
                     }
 
+                    &"if" => {
+                        if list.len() != 4 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        if list[1].eval(env)?.extract_bool()? {
+                            return list[2].eval(env);
+                        } else {
+                            return list[3].eval(env);
+                        }
+                    }
+
                     _ => (),
                 }
 
                 let func = &list[0].eval(env)?.extract_fn()?;
                 let args = &list[1..];
-                //println!("{:?}", args);
 
                 if args.len() != func.params.len() {
                     return Err(LispErr::ArityMismatch);
