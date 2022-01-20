@@ -170,7 +170,10 @@ impl LispExpr {
 
                                 return Ok(LispExpr::Null);
                             }
-                            _ => return Err(LispErr::TypeError("invalid syntax");,
+                            _ => {
+                                return Err(LispErr::TypeError(
+                                        "invalid syntax".to_string()));
+                            }
                         }
                     }
 

@@ -48,7 +48,12 @@ type ParseErr = String;
 fn to_lispexpr(token: &str) -> LispExpr {
     match token.parse::<i64>() {
         Ok(num) => LispExpr::Integer(num),
-        Err(_) => LispExpr::Symbol(token.to_string()),
+        Err(_) => match token {
+            "true" => LispExpr::Bool(true),
+            "false" => LispExpr::Bool(false),
+
+            _ => LispExpr::Symbol(token.to_string()),
+        }
     }
 }
 
