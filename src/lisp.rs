@@ -105,8 +105,46 @@ impl LispExpr {
 
                 // handle special forms
                 match &list[0].extract_symbol()?.as_str() {
-                    &"define" => {
+                    &"+" => {
+                        if list.len() < 2 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let ans = list[1..]
+                            .iter()
+                            .map(|a| a.eval(env)?.extract_int())
+                            .collect::<Result<Vec<_>, _>>()?
+                            .iter()
+                            .cloned()
+                            .sum();
+                        return Ok(LispExpr::Integer(ans));
+                    }
+
+                    &"*" => {
+                        if list.len() < 2 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let ans = list[1..]
+                            .iter()
+                            .map(|a| a.eval(env)?.extract_int())
+                            .collect::<Result<Vec<_>, _>>()?
+                            .iter()
+                            .cloned()
+                            .product();
+                        return Ok(LispExpr::Integer(ans));
+                    }
+
+                    &"-" => {
                         if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let first = list[1].eval(env)?.extract_int()?;
+                        let second = list[2].eval(env)?.extract_int()?;
+                        let ans = first - second;
+                        return Ok(LispExpr::Integer(ans));
+                    }
+
+                    &"define" => {
+                        if list.len() < 3 {
                             return Err(LispErr::ArityMismatch);
                         }
 
