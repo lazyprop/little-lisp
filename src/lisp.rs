@@ -32,6 +32,7 @@ pub enum LispExpr {
     List(Vec<LispExpr>),
     Bool(bool),
     Func(Box<LispFunc>),
+    Cons(Box<LispExpr>, Box<LispExpr>),
     Null,
 }
 
@@ -85,12 +86,23 @@ impl LispExpr {
         }
     }
 
-    #[allow(dead_code)]
     pub fn print(&self) {
         match self {
             LispExpr::Symbol(s) => print!("Symbol: {},", s),
             LispExpr::Integer(n) => print!("Integer: {},", n),
             _ => (),
+        }
+    }
+
+    pub fn to_string(&self) -> Option<String> {
+        match self {
+            LispExpr::Integer(n) => Some(format!("{}", n).to_string()),
+            LispExpr::Bool(b) => Some(format!("{}", b).to_string()),
+            LispExpr::Cons(lhs, rhs) => {
+                Some(format!("({} {})", lhs.to_string()?, rhs.to_string()?)
+                    .to_string())
+            }
+            _ => None,
         }
     }
 
@@ -156,6 +168,15 @@ impl LispExpr {
                         return Ok(LispExpr::Bool(ans));
                     }
 
+                    &"cons" => {
+                        if list.len() != 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let lhs = list[1].eval(env)?;
+                        let rhs = list[2].eval(env)?;
+                        return Ok(LispExpr::Cons(Box::new(lhs), Box::new(rhs)));
+                    }
+
                     &"define" => {
                         if list.len() < 3 {
                             return Err(LispErr::ArityMismatch);
@@ -214,10 +235,7 @@ impl LispExpr {
                 Some(e) => e.eval(env),
                 None => Err(LispErr::NameError),
             },
-            LispExpr::Integer(_) => Ok(self.clone()),
-            LispExpr::Func(_) => Ok(self.clone()),
-            LispExpr::Bool(_) => Ok(self.clone()),
-            LispExpr::Null => Ok(self.clone()),
+            _ => Ok(self.clone()),
         }
     }
 }

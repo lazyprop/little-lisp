@@ -27,14 +27,28 @@ fn main() {
                 //println!("Parsed Expression: {:?}\n", expr);
                 let res = expr.eval(&mut env);
                 match res {
+                    Ok(val) => {
+                        if let Some(s) = val.to_string() {
+                            println!("{}", s);
+                        }
+                    }
+                    Err(e) => println!("error: {:?}", e),
+                }
+
+                /*
+                match res {
                     Ok(val) => match val {
                         LispExpr::Integer(i) => println!("{}", i),
                         LispExpr::Bool(b) => println!("{}", b),
+                        LispExpr::Cons(lhs, rhs) => {
+                            println!("({} . {})", lhs, rhs);
+                        }
                         LispExpr::Null => (),
                         _ => println!("void"),
                     },
                     Err(e) => println!("error: {:?}", e),
                 };
+                */
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
