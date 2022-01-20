@@ -6,7 +6,7 @@ type ReturnType = Result<LispExpr, LispErr>; // all lisp functions return this t
 #[derive(Clone, Debug)]
 pub struct LispFunc {
     params: Vec<LispExpr>,
-    body: LispExpr,
+    body: Vec<LispExpr>,
 }
 
 impl LispFunc {
@@ -16,7 +16,10 @@ impl LispFunc {
             let a = args[i].clone().eval(env)?;
             env.insert(x.extract_symbol()?, a);
         }
-        let res = self.body.eval(env);
+        for i in 0..self.body.len() - 1 {
+            self.body[i].eval(env)?;
+        }
+        let res = self.body.last().expect("function body is empty").eval(env);
         env.pop_frame();
         res
     }
@@ -93,11 +96,6 @@ impl LispExpr {
 
     pub fn eval(&self, env: &mut LispEnv) -> ReturnType {
         match self {
-            LispExpr::Symbol(s) => match env.get(s) {
-                Some(e) => Ok(e),
-                None => Err(LispErr::NameError),
-            },
-            LispExpr::Integer(_) => Ok(self.clone()),
             LispExpr::List(list) => {
                 if list.is_empty() {
                     return Ok(LispExpr::Null);
@@ -172,15 +170,12 @@ impl LispExpr {
                             // we're defining a procedure
                             LispExpr::List(lst) => {
                                 let fname = lst[0].extract_symbol()?;
-                                let params = &lst[1..];
-                                let body = &list[2];
+                                let params = lst[1..].to_vec();
+                                let body = list[2..].to_vec();
 
                                 env.insert(
                                     fname,
-                                    LispExpr::Func(Box::new(LispFunc {
-                                        params: params.to_vec(),
-                                        body: body.clone(),
-                                    })),
+                                    LispExpr::Func(Box::new(LispFunc { params, body })),
                                 );
 
                                 return Ok(LispExpr::Null);
@@ -215,6 +210,11 @@ impl LispExpr {
                 // recursively evaluate until the return value is not an atom
                 func.call(args.to_vec(), env)
             }
+            LispExpr::Symbol(s) => match env.get(s) {
+                Some(e) => e.eval(env),
+                None => Err(LispErr::NameError),
+            },
+            LispExpr::Integer(_) => Ok(self.clone()),
             LispExpr::Func(_) => Ok(self.clone()),
             LispExpr::Bool(_) => Ok(self.clone()),
             LispExpr::Null => Ok(self.clone()),
@@ -249,7 +249,7 @@ impl LispEnv {
             "first".to_string(),
             LispExpr::Func(Box::new(LispFunc {
                 params: vec![LispExpr::Symbol(a.clone()), LispExpr::Symbol(b)],
-                body: LispExpr::Symbol(a),
+                body: vec![LispExpr::Symbol(a)],
             })),
         );
         env
