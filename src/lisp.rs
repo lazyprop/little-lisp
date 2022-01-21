@@ -37,7 +37,7 @@ pub enum LispExpr {
 
 impl LispExpr {
     #[allow(dead_code)]
-    fn extract_list(&self) -> Result<Vec<LispExpr>, LispErr> {
+    pub fn extract_list(&self) -> Result<Vec<LispExpr>, LispErr> {
         match self {
             LispExpr::List(l) => Ok(l.clone()),
             _ => Err(LispErr::TypeError("expected list".to_string())),
@@ -71,17 +71,6 @@ impl LispExpr {
         match self {
             LispExpr::Func(f) => Ok(f.clone()),
             _ => Err(LispErr::TypeError("expected function".to_string())),
-        }
-    }
-
-    // TODO this shouldn't be required
-    // This is needed because the parser creates a List of LispExprs, but it
-    // it cannot be evaluated directly because it's not in the proper format
-    // (the first element is not a Func)
-    pub fn extract_first(&self) -> LispExpr {
-        match self {
-            LispExpr::List(v) => v[0].clone(),
-            _ => self.clone(),
         }
     }
 
@@ -351,7 +340,7 @@ pub struct LispEnv {
 }
 
 impl LispEnv {
-    fn new() -> LispEnv {
+    pub fn new() -> LispEnv {
         LispEnv {
             stack: vec![HashMap::new()],
         }
