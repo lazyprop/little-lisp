@@ -279,6 +279,43 @@ impl LispExpr {
                         }
                     }
 
+                    &"cond" => {
+                        if list.len() < 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        for i in 1..list.len()-1 {
+                            let c = list[i].extract_list()?;
+                            if c.len() != 2 {
+                                return Err(LispErr::ArityMismatch);
+                            }
+                            if c[0].eval(env)?.extract_bool()? {
+                                return c[1].eval(env);
+                            }
+                        }
+                        let c = list.last()
+                            .expect("list empty")
+                            .extract_list()?;
+                        if c.len() != 2 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        let b = match c[0].clone() {
+                            LispExpr::Bool(b) => Ok(b),
+                            LispExpr::List(_) => c[0].eval(env)?.extract_bool(),
+                            LispExpr::Symbol(s) => if s == "else".to_string() {
+                                Ok(true)
+                            } else {
+                                Err(LispErr::SyntaxError("expected `else`".to_string()))
+                            },
+                            _ => Err(LispErr::TypeError("expected bool or `else`".to_string())),
+                        }?;
+
+                        if b {
+                            return c[1].eval(env);
+                        } else {
+                            return Ok(LispExpr::Null);
+                        }
+                    }
+
                     _ => (),
                 }
 
@@ -306,6 +343,7 @@ pub enum LispErr {
     ArityMismatch,
     NameError,
     TypeError(String),
+    SyntaxError(String),
 }
 
 #[derive(Debug)]
