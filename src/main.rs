@@ -1,17 +1,13 @@
 mod lisp;
 mod parser;
 
-use lisp::{LispEnv, LispExpr};
+use lisp::{LispEnv};
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-fn main() {
-    let mut env = LispEnv::default();
-
-    // `()` can be used when no completer is required
+fn repl(env: &mut LispEnv) {
     let mut rl = Editor::<()>::new();
-
     loop {
         let readline = rl.readline("> ");
         match readline {
@@ -26,7 +22,7 @@ fn main() {
                 let parsed = parser::parse(&mut iter);
                 let expr = parsed.to_lispexpr().extract_first();
 
-                let res = expr.eval(&mut env);
+                let res = expr.eval(env);
                 match res {
                     Ok(val) => {
                         if let Some(s) = val.to_string() {
@@ -50,6 +46,11 @@ fn main() {
             }
         }
     }
-
     rl.save_history("history.txt").unwrap();
+}
+
+fn main() {
+    let mut env = LispEnv::default();
+
+    repl(&mut env);
 }

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-type ArgsType = Vec<LispExpr>; // all lisp function take a list of arguments
 type ReturnType = Result<LispExpr, LispErr>; // all lisp functions return this type
 
 #[derive(Clone, Debug)]
@@ -218,7 +217,7 @@ impl LispExpr {
                             return Err(LispErr::ArityMismatch);
                         }
                         let res = list[1].eval(env)?;
-                        if let LispExpr::Cons(lhs, rhs) = res {
+                        if let LispExpr::Cons(lhs, _) = res {
                             return Ok(*lhs);
                         } else {
                             return Err(LispErr::TypeError("expected cons".to_string()));
@@ -230,7 +229,7 @@ impl LispExpr {
                             return Err(LispErr::ArityMismatch);
                         }
                         let res = list[1].eval(env)?;
-                        if let LispExpr::Cons(lhs, rhs) = res {
+                        if let LispExpr::Cons(_, rhs) = res {
                             return Ok(*rhs);
                         } else {
                             return Err(LispErr::TypeError("expected cons".to_string()));
