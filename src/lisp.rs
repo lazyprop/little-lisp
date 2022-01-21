@@ -346,20 +346,6 @@ impl LispEnv {
         }
     }
 
-    pub fn default() -> LispEnv {
-        let mut env = LispEnv::new();
-        let a = "a".to_string();
-        let b = "b".to_string();
-        env.insert(
-            "first".to_string(),
-            LispExpr::Func(Box::new(LispFunc {
-                params: vec![LispExpr::Symbol(a.clone()), LispExpr::Symbol(b)],
-                body: vec![LispExpr::Symbol(a)],
-            })),
-        );
-        env
-    }
-
     fn new_frame(&mut self) {
         self.stack.push(HashMap::new());
     }
