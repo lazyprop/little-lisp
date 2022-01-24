@@ -63,7 +63,9 @@ fn eval_file(filename: &str, env: &mut LispEnv) {
 }
 
 fn main() {
-    let mut env = LispEnv::new();
+    let mut env = LispEnv::default();
+
+    eval_file("default.scm", &mut env);
 
     repl(&mut env);
 }

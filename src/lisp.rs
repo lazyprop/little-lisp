@@ -32,7 +32,8 @@ pub enum LispExpr {
     Bool(bool),
     Func(Box<LispFunc>),
     Cons(Box<LispExpr>, Box<LispExpr>),
-    Null,
+    Null, // empty list
+    Void, // when nothing is returned
 }
 
 impl LispExpr {
@@ -90,15 +91,17 @@ impl LispExpr {
                 Some(format!("({} {})", lhs.to_string()?, rhs.to_string()?)
                     .to_string())
             }
+            LispExpr::Null => Some("()".to_string()),
             _ => None,
         }
     }
 
     pub fn eval(&self, env: &mut LispEnv) -> ReturnType {
+        //println!("{:?}\n\n", self);
         match self {
             LispExpr::List(list) => {
                 if list.is_empty() {
-                    return Ok(LispExpr::Null);
+                    return Ok(LispExpr::Void);
                 }
 
                 // handle special forms
@@ -192,6 +195,16 @@ impl LispExpr {
                         return Ok(LispExpr::Bool(lhs >= rhs));
                     }
 
+                    &"null?" => {
+                        if list.len() != 2 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+                        return match list[1].eval(env)? {
+                            LispExpr::Null => Ok(LispExpr::Bool(true)),
+                            _ => Ok(LispExpr::Bool(false)),
+                        };
+                    }
+
                     &"cons" => {
                         if list.len() != 3 {
                             return Err(LispErr::ArityMismatch);
@@ -225,7 +238,6 @@ impl LispExpr {
                         }
                     }
 
-
                     &"define" => {
                         if list.len() < 3 {
                             return Err(LispErr::ArityMismatch);
@@ -235,7 +247,7 @@ impl LispExpr {
                             // we're just defining a symbol
                             LispExpr::Symbol(s) => {
                                 env.insert(s.clone(), list[2].clone());
-                                return Ok(LispExpr::Null);
+                                return Ok(LispExpr::Void);
                             }
                             // we're defining a procedure
                             LispExpr::List(lst) => {
@@ -248,7 +260,7 @@ impl LispExpr {
                                     LispExpr::Func(Box::new(LispFunc { params, body })),
                                 );
 
-                                return Ok(LispExpr::Null);
+                                return Ok(LispExpr::Void);
                             }
                             _ => {
                                 return Err(LispErr::TypeError("invalid syntax".to_string()));
@@ -300,7 +312,7 @@ impl LispExpr {
                         if b {
                             return c[1].eval(env);
                         } else {
-                            return Ok(LispExpr::Null);
+                            return Ok(LispExpr::Void);
                         }
                     }
 
@@ -344,6 +356,12 @@ impl LispEnv {
         LispEnv {
             stack: vec![HashMap::new()],
         }
+    }
+
+    pub fn default() -> LispEnv {
+        let mut env = LispEnv::new();
+        env.insert("null".to_string(), LispExpr::Null);
+        env
     }
 
     fn new_frame(&mut self) {
