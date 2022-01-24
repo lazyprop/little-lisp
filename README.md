@@ -1,5 +1,5 @@
-A small Lisp interpreter in Rust. Implements a small subset of Scheme. Extremely
-slow, but works.
+A little Lisp interpreter written in Rust. Implements a small subset of Scheme.
+Extremely slow, but works.
 
 Small example:
 ![Small example](example-screenshot.png)
