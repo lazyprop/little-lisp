@@ -268,6 +268,26 @@ impl LispExpr {
                         }
                     }
 
+                    &"lambda" => {
+                        if list.len() < 3 {
+                            return Err(LispErr::ArityMismatch);
+                        }
+
+                        match &list[1] {
+                            LispExpr::List(lst) => {
+                                let params = lst.to_vec();
+                                let body = list[2..].to_vec();
+
+                                let func = LispExpr::Func(Box::new(LispFunc { params, body }));
+
+                                return Ok(func);
+                            }
+                            _ => {
+                                return Err(LispErr::TypeError("invalid syntax".to_string()));
+                            }
+                        }
+                    }
+
                     &"if" => {
                         if list.len() != 4 {
                             return Err(LispErr::ArityMismatch);
